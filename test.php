@@ -25,7 +25,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $population = $_POST["population"];
         $langues = $_POST["langues"];
         $cities = isset($_POST["cities"]) ? json_decode($_POST["cities"], true) : [];
-        $nomError = "";
+        $nomError = "";}
 
         if (empty($nom)) {
              $nomError = "Country name is required.";

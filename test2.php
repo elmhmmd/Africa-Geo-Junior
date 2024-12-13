@@ -25,7 +25,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $population = $_POST["population"];
         $langues = $_POST["langues"];
         $cities = isset($_POST["cities"]) ? json_decode($_POST["cities"], true) : [];
-        $nomError = "";
+            $nomError = "";}
 
         if (empty($nom)) {
              $nomError = "Country name is required.";
@@ -288,8 +288,9 @@ $countryMap = [
     'Zimbabwe' => 'ZW',
 ];
 
-$sql = "SELECT COUNT(*) AS count FROM pays")->fetch_assoc()['count'];
-$totalCountries = $conn->query($sql)->fetch_assoc()['count'];
+$sql = "SELECT COUNT(*) AS count FROM pays";
+$result = $conn->query($sql);
+$totalCountries = $result->fetch_assoc()['count'];
 $totalPages = ceil($totalCountries / $perPage);
 
 $style = 'flat';
@@ -435,7 +436,7 @@ $size = '64';
                    echo '</div>';
                     }
             }
-          }
+          
         ?>
     </div>
     <div class="pagination flex justify-center mt-8 mb-8">
