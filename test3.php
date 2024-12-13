@@ -19,65 +19,76 @@ $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] :
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (isset($_POST['add_country'])) {
-         error_log("Add country form submitted");
-         error_log(print_r($_POST,true));
+        error_log("Add country form submitted");
+        error_log(print_r($_POST, true));
         $nom = $_POST["nom"];
         $population = $_POST["population"];
         $langues = $_POST["langues"];
-         $cities = isset($_POST["cities"]) ? json_decode($_POST["cities"], true) : [];
-
-        if (empty($nom)) {
-            $feedbackMessage = "Country name is required.";
-        } else {
+        $cities = isset($_POST["cities"]) ? json_decode($_POST["cities"], true) : [];
+        $nomError = "";
+        // Check if country already exists
+        $checkSql = "SELECT COUNT(*) FROM pays WHERE nom = ?";
+        $checkStmt = $conn->prepare($checkSql);
+        $checkStmt->bind_param("s", $nom);
+        $checkStmt->execute();
+        $checkStmt->bind_result($count);
+        $checkStmt->fetch();
+        $checkStmt->close();
+        if($count > 0) {
+             $nomError = "Country already exists.";
+        } else if (empty($nom)) {
+            $nomError = "Country name is required.";
+        }
+         else {
             $continentName = 'Afrique';
             $stmt = $conn->prepare("SELECT id_continent FROM continent WHERE nom = ?");
             $stmt->bind_param("s", $continentName);
             $stmt->execute();
-             $result = $stmt->get_result();
+            $result = $stmt->get_result();
             if ($row = $result->fetch_assoc()) {
-                 $id_continent = $row['id_continent'];
-                 $stmt->close();
-                 $sql = "INSERT INTO pays (nom, population, id_continent, langues) VALUES (?, ?, ?, ?)";
-                 error_log("SQL for adding the country:" . $sql);
-               $stmt = $conn->prepare($sql);
-                 if($stmt === false){
+                $id_continent = $row['id_continent'];
+                $stmt->close();
+                $sql = "INSERT INTO pays (nom, population, id_continent, langues) VALUES (?, ?, ?, ?)";
+                error_log("SQL for adding the country:" . $sql);
+                $stmt = $conn->prepare($sql);
+                if ($stmt === false) {
                     $feedbackMessage = "Error in SQL statement: " . $conn->error;
-                    error_log("Error with the prepare: " .  $conn->error);
+                    error_log("Error with the prepare: " . $conn->error);
                 } else {
                     $stmt->bind_param("siss", $nom, $population, $id_continent, $langues);
                     if ($stmt->execute()) {
                         $country_id = $conn->insert_id;
-                          error_log("country was added successfully, inserted id: " . $country_id);
-                         $stmt->close();
-                           foreach ($cities as $city) {
-                             $cityNom = $city["nom"];
-                             $cityDescription = $city["description"];
+                        error_log("country was added successfully, inserted id: " . $country_id);
+                        $stmt->close();
+                        foreach ($cities as $city) {
+                            $cityNom = $city["nom"];
+                            $cityDescription = $city["description"];
                             $cityType = $city["type"];
-                                 $sqlCity = "INSERT INTO ville (nom, description, type, id_pays) VALUES (?, ?, ?, ?)";
-                                  error_log("SQL for adding city:" . $sqlCity);
-                           $stmtCity = $conn->prepare($sqlCity);
-                            if($stmtCity === false){
+                            $sqlCity = "INSERT INTO ville (nom, description, type, id_pays) VALUES (?, ?, ?, ?)";
+                            error_log("SQL for adding city:" . $sqlCity);
+                            $stmtCity = $conn->prepare($sqlCity);
+                            if ($stmtCity === false) {
                                 $feedbackMessage = "Error in SQL statement: " . $conn->error;
-                                 error_log("Error with the prepare: " .  $conn->error);
+                                error_log("Error with the prepare: " . $conn->error);
                                 break;
-                           } else {
+                            } else {
                                 $stmtCity->bind_param("sssi", $cityNom, $cityDescription, $cityType, $country_id);
-                                 if (!$stmtCity->execute()) {
+                                if (!$stmtCity->execute()) {
                                     $feedbackMessage = "Error adding city: " . $stmtCity->error;
-                                     error_log("Error with inserting cities: " .  $stmtCity->error);
+                                    error_log("Error with inserting cities: " . $stmtCity->error);
                                     break;
-                                 }
-                                 $stmtCity->close();
+                                }
+                                $stmtCity->close();
                             }
                         }
-                         if(empty($feedbackMessage)){
+                        if (empty($feedbackMessage) && empty($nomError)) {
                             $feedbackMessage = "Country and cities added successfully.";
                             error_log("Country and cities added successfully.");
                         }
                     } else {
-                       $feedbackMessage = "Error adding country: " . $stmt->error;
-                         error_log("Error with inserting the country: " . $stmt->error);
-                   }
+                        $feedbackMessage = "Error adding country: " . $stmt->error;
+                        error_log("Error with inserting the country: " . $stmt->error);
+                    }
                 }
             } else {
                 $feedbackMessage = "Continent 'Africa' not found in the database.";
@@ -87,130 +98,130 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
     }
-    if(isset($_POST['edit_country'])){
+    if (isset($_POST['edit_country'])) {
         $idPays = $_POST["id_pays"];
-         $nom = $_POST["nom"];
-       $population = $_POST["population"];
-       $langues = $_POST["langues"];
-         $sql = "UPDATE pays SET nom = ?, population = ?, langues = ? WHERE id_pays = ?";
-           error_log("SQL for updating the country:" . $sql);
-       $stmt = $conn->prepare($sql);
-        if($stmt === false){
-             $feedbackMessage = "Error in SQL statement: " . $conn->error;
-             error_log("Error with prepare: " .  $conn->error);
-         }else{
+        $nom = $_POST["nom"];
+        $population = $_POST["population"];
+        $langues = $_POST["langues"];
+        $sql = "UPDATE pays SET nom = ?, population = ?, langues = ? WHERE id_pays = ?";
+        error_log("SQL for updating the country:" . $sql);
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false) {
+            $feedbackMessage = "Error in SQL statement: " . $conn->error;
+            error_log("Error with prepare: " . $conn->error);
+        } else {
             $stmt->bind_param("sssi", $nom, $population, $langues, $idPays);
-             if ($stmt->execute()) {
-                   $feedbackMessage = "Country edited successfully.";
-                    error_log("country updated successfully");
-                } else {
-                   $feedbackMessage = "Error editing country: " . $stmt->error;
-                     error_log("Error with updating: " .  $stmt->error);
+            if ($stmt->execute()) {
+                $feedbackMessage = "Country edited successfully.";
+                error_log("country updated successfully");
+            } else {
+                $feedbackMessage = "Error editing country: " . $stmt->error;
+                error_log("Error with updating: " . $stmt->error);
             }
-          $stmt->close();
+            $stmt->close();
         }
     }
-      if (isset($_POST['edit_city'])) {
-          $idVille = $_POST["id_ville"];
-         $cityNom = $_POST["city_nom"];
-          $cityDescription = $_POST["city_description"];
-         $cityType = $_POST["city_type"];
-           $sql = "UPDATE ville SET nom = ?, description = ?, type = ? WHERE id_ville = ?";
-            error_log("SQL for updating the city:" . $sql);
-          $stmt = $conn->prepare($sql);
-           if($stmt === false){
-                $feedbackMessage = "Error in SQL statement: " . $conn->error;
-                 error_log("Error with the prepare: " .  $conn->error);
-           } else {
-                $stmt->bind_param("sssi", $cityNom, $cityDescription, $cityType, $idVille);
-               if ($stmt->execute()) {
-                     $feedbackMessage = "City updated successfully.";
-                    error_log("city updated successfully");
-                } else {
-                     $feedbackMessage = "Error updating city: " . $stmt->error;
-                     error_log("Error with updating: " .  $stmt->error);
-               }
-           $stmt->close();
-         }
-     }
-     if (isset($_POST['add_city_to_country'])) { // New form handling for adding cities
-         $country_id = $_POST['country_id'];
-        $city_nom = $_POST['city_nom'];
-       $city_description = $_POST['city_description'];
-         $city_type = $_POST['city_type'];
-
-          $sqlCity = "INSERT INTO ville (nom, description, type, id_pays) VALUES (?, ?, ?, ?)";
-            $stmtCity = $conn->prepare($sqlCity);
-           if ($stmtCity === false) {
-                $feedbackMessage = "Error in SQL statement: " . $conn->error;
-                 error_log("Error with the prepare: " . $conn->error);
-          } else {
-                $stmtCity->bind_param("sssi", $city_nom, $city_description, $city_type, $country_id);
-              if (!$stmtCity->execute()) {
-                    $feedbackMessage = "Error adding city: " . $stmtCity->error;
-                    error_log("Error with inserting cities: " . $stmtCity->error);
-               } else {
-                   $feedbackMessage = "City added successfully.";
-                     error_log("City added successfully to country ID: " . $country_id);
-                }
-             $stmtCity->close();
-            }
-      }
-      if(isset($_POST['delete_country'])){
-          $idPays = $_POST["id_pays"];
-          $sql = "DELETE FROM ville WHERE id_pays = ?";
-            error_log("SQL for deleting the city:" . $sql);
+    if (isset($_POST['edit_city'])) {
+        $idVille = $_POST["id_ville"];
+        $cityNom = $_POST["city_nom"];
+        $cityDescription = $_POST["city_description"];
+        $cityType = $_POST["city_type"];
+        $sql = "UPDATE ville SET nom = ?, description = ?, type = ? WHERE id_ville = ?";
+        error_log("SQL for updating the city:" . $sql);
         $stmt = $conn->prepare($sql);
-         if($stmt === false){
-                $feedbackMessage = "Error in SQL statement: " . $conn->error;
-                   error_log("Error with the prepare: " .  $conn->error);
-           } else {
-                $stmt->bind_param("i", $idPays);
-                 if($stmt->execute()){
-                    $stmt->close();
-                     $sqlCountry = "DELETE FROM pays WHERE id_pays = ?";
-                     error_log("SQL for deleting the country:" . $sqlCountry);
-                     $stmtCountry = $conn->prepare($sqlCountry);
-                      if($stmtCountry === false){
-                            $feedbackMessage = "Error in SQL statement: " . $conn->error;
-                             error_log("Error with the prepare: " .  $conn->error);
-                     }else {
-                           $stmtCountry->bind_param("i", $idPays);
-                             if($stmtCountry->execute()){
-                                  $feedbackMessage = "Country and associated cities deleted.";
-                                   error_log("country and cities deleted");
-                            }else{
-                                  $feedbackMessage = "Error deleting country: " . $stmtCountry->error;
-                                    error_log("Error with updating country " . $stmtCountry->error);
-                           }
-                           $stmtCountry->close();
-                      }
+        if ($stmt === false) {
+            $feedbackMessage = "Error in SQL statement: " . $conn->error;
+            error_log("Error with the prepare: " . $conn->error);
+        } else {
+            $stmt->bind_param("sssi", $cityNom, $cityDescription, $cityType, $idVille);
+            if ($stmt->execute()) {
+                $feedbackMessage = "City updated successfully.";
+                error_log("city updated successfully");
+            } else {
+                $feedbackMessage = "Error updating city: " . $stmt->error;
+                error_log("Error with updating: " . $stmt->error);
+            }
+            $stmt->close();
+        }
+    }
+    if (isset($_POST['add_city_to_country'])) { // New form handling for adding cities
+        $country_id = $_POST['country_id'];
+        $city_nom = $_POST['city_nom'];
+        $city_description = $_POST['city_description'];
+        $city_type = $_POST['city_type'];
 
-                 } else {
-                    $feedbackMessage = "Error deleting cities: " . $stmt->error;
-                     error_log("Error with updating city:" . $stmt->error);
+        $sqlCity = "INSERT INTO ville (nom, description, type, id_pays) VALUES (?, ?, ?, ?)";
+        $stmtCity = $conn->prepare($sqlCity);
+        if ($stmtCity === false) {
+            $feedbackMessage = "Error in SQL statement: " . $conn->error;
+            error_log("Error with the prepare: " . $conn->error);
+        } else {
+            $stmtCity->bind_param("sssi", $city_nom, $city_description, $city_type, $country_id);
+            if (!$stmtCity->execute()) {
+                $feedbackMessage = "Error adding city: " . $stmtCity->error;
+                error_log("Error with inserting cities: " . $stmtCity->error);
+            } else {
+                $feedbackMessage = "City added successfully.";
+                error_log("City added successfully to country ID: " . $country_id);
+            }
+            $stmtCity->close();
+        }
+    }
+    if (isset($_POST['delete_country'])) {
+        $idPays = $_POST["id_pays"];
+        $sql = "DELETE FROM ville WHERE id_pays = ?";
+        error_log("SQL for deleting the city:" . $sql);
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false) {
+            $feedbackMessage = "Error in SQL statement: " . $conn->error;
+            error_log("Error with the prepare: " . $conn->error);
+        } else {
+            $stmt->bind_param("i", $idPays);
+            if ($stmt->execute()) {
+                $stmt->close();
+                $sqlCountry = "DELETE FROM pays WHERE id_pays = ?";
+                error_log("SQL for deleting the country:" . $sqlCountry);
+                $stmtCountry = $conn->prepare($sqlCountry);
+                if ($stmtCountry === false) {
+                    $feedbackMessage = "Error in SQL statement: " . $conn->error;
+                    error_log("Error with the prepare: " . $conn->error);
+                } else {
+                    $stmtCountry->bind_param("i", $idPays);
+                    if ($stmtCountry->execute()) {
+                        $feedbackMessage = "Country and associated cities deleted.";
+                        error_log("country and cities deleted");
+                    } else {
+                        $feedbackMessage = "Error deleting country: " . $stmtCountry->error;
+                        error_log("Error with updating country " . $stmtCountry->error);
+                    }
+                    $stmtCountry->close();
                 }
-           }
-      }
-        if(isset($_POST['delete_city'])){
-           $idVille = $_POST["id_ville"];
-            $sql = "DELETE FROM ville WHERE id_ville = ?";
-              error_log("SQL for deleting the city:" . $sql);
-          $stmt = $conn->prepare($sql);
-          if($stmt === false){
-               $feedbackMessage = "Error in SQL statement: " . $conn->error;
-                error_log("Error with the prepare: " .  $conn->error);
-        } else{
-           $stmt->bind_param("i", $idVille);
-           if($stmt->execute()){
-               $feedbackMessage = "City deleted successfully.";
-               error_log("city deleted successfully");
-           }else{
-                  $feedbackMessage = "Error deleting city: " . $stmt->error;
-                    error_log("Error with updating city:" . $stmt->error);
-           }
-         $stmt->close();
-         }
+
+            } else {
+                $feedbackMessage = "Error deleting cities: " . $stmt->error;
+                error_log("Error with updating city:" . $stmt->error);
+            }
+        }
+    }
+    if (isset($_POST['delete_city'])) {
+        $idVille = $_POST["id_ville"];
+        $sql = "DELETE FROM ville WHERE id_ville = ?";
+        error_log("SQL for deleting the city:" . $sql);
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false) {
+            $feedbackMessage = "Error in SQL statement: " . $conn->error;
+            error_log("Error with the prepare: " . $conn->error);
+        } else {
+            $stmt->bind_param("i", $idVille);
+            if ($stmt->execute()) {
+                $feedbackMessage = "City deleted successfully.";
+                error_log("city deleted successfully");
+            } else {
+                $feedbackMessage = "Error deleting city: " . $stmt->error;
+                error_log("Error with updating city:" . $stmt->error);
+            }
+            $stmt->close();
+        }
     }
 }
 
@@ -289,26 +300,32 @@ $size = '64';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>African Flags</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .input-container {
+            margin-bottom: 0.75rem;
+        }
+    </style>
 </head>
 <body class="bg-gray-100 font-sans">
-    <button id="addCountryBtn" class="add-country-button absolute top-5 left-5 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Add Country</button>
+    <button id="addCountryBtn" class="add-country-button absolute top-5 left-5 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-6">Add Country</button>
     <div id="addCountryModal" class="modal fixed hidden z-10 inset-0 overflow-y-auto bg-gray-900 bg-opacity-50">
         <div class="modal-content bg-white mx-auto my-20 p-6 border border-gray-200 rounded-md w-4/5 max-w-lg">
             <span class="close text-gray-600 float-right text-2xl font-bold cursor-pointer">×</span>
             <h2 class="text-2xl font-bold mb-4">Add New Country</h2>
-              <?php if (!empty($feedbackMessage)) {
-                   echo "<p class='text-red-600 mt-2 mb-4'>$feedbackMessage</p>";
+              <?php if (!empty($feedbackMessage) && !isset($nomError) ) {
+                   echo "<p class='text-green-600 mt-2 mb-4'>$feedbackMessage</p>";
                 }?>
-            <form action="" method="post">
-               <div class="mb-4">
-                 <label for="nom" class="block text-gray-700 text-sm font-bold mb-2">Country Name:</label>
-                  <input type="text" id="nom" name="nom" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-               </div>
-                <div class="mb-4">
+            <form action="" method="post"  class="flex flex-col">
+                <div class="input-container">
+                  <label for="nom" class="block text-gray-700 text-sm font-bold mb-2">Country Name:</label>
+                   <input type="text" id="nom" name="nom" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    <?php if (isset($nomError)) { echo "<p class='text-red-600 mt-2'>$nomError</p>"; } ?>
+                </div>
+                <div class="input-container">
                     <label for="population" class="block text-gray-700 text-sm font-bold mb-2">Population:</label>
                      <input type="number" id="population" name="population" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-               </div>
-               <div class="mb-4">
+                </div>
+               <div class="input-container">
                   <label for="langues" class="block text-gray-700 text-sm font-bold mb-2">Languages (comma-separated):</label>
                   <input type="text" id="langues" name="langues" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                </div>
@@ -321,7 +338,7 @@ $size = '64';
             </form>
         </div>
     </div>
-   <div class="mt-16">
+   <div class="mt-16  mx-auto w-4/5">
         <?php
             if ($result->num_rows > 0) {
               while ($country = $result->fetch_assoc()) {
@@ -329,28 +346,28 @@ $size = '64';
                 if (isset($countryMap[$countryName])) {
                     $code = $countryMap[$countryName];
                     $flagUrl = "https://flagsapi.com/$code/$style/$size.png";
-                   echo '<div class="bg-white rounded-md shadow p-4 w-full mb-8">';
+                   echo '<div class="bg-white rounded-md shadow p-4 w-full mb-8  border">';
                      echo '<div class="flex items-center space-x-4 mb-4">';
                        echo '<img src="' . $flagUrl . '" alt="' . $countryName . ' flag" class="w-20 h-20 object-contain cursor-pointer">';
                       echo '<h2 class="text-xl font-bold">'. $countryName .'</h2>';
                            echo '<button class="toggle-country-info ml-auto bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-2 rounded" data-country-id="' . $country['id_pays'] . '">Show Details</button>';
                         echo '</div>';
                          echo '<div id="country-info-' . $country['id_pays'] . '" class="country-info hidden">';
-                         echo "<form method='post' class='mt-4'>";
+                         echo "<form method='post' class='mt-4 flex flex-col'>";
                             echo "<input type='hidden' name='id_pays' value='" . $country['id_pays'] . "'/>";
-                              echo '<div class="mb-2">';
+                            echo '<div class="input-container">';
                                     echo  '<label class="block text-gray-700 text-sm font-bold mb-1">Country Name:</label>';
                                     echo  '<input type="text" name="nom" value="' . $country['nom'] . '" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">';
                               echo '</div>';
-                                echo '<div class="mb-2">';
+                                echo '<div class="input-container">';
                                      echo  '<label class="block text-gray-700 text-sm font-bold mb-1">Population:</label>';
                                       echo  '<input type="text" name="population" value="' . $country['population'] . '" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">';
                                   echo '</div>';
-                                    echo '<div class="mb-2">';
+                                    echo '<div class="input-container">';
                                        echo '<label class="block text-gray-700 text-sm font-bold mb-1">Languages:</label>';
                                          echo '<input type="text" name="langues" value="' . $country['langues'] . '"  class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">';
                                    echo '</div>';
-                               echo '<div class="flex justify-end">';
+                               echo '<div class="flex justify-end mt-4">';
                                     echo '<button type="submit" name="edit_country" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Modify</button>';
                                      echo '<button type="submit" name="delete_country" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded ml-2">Delete</button>';
                               echo '</div>';
@@ -366,15 +383,15 @@ $size = '64';
                                     echo  '<div class="city-container mt-4 border border-gray-300 rounded-md p-3">';
                                           echo "<form method='post'>";
                                             echo "<input type='hidden' name='id_ville' value='" . $city['id_ville'] . "'/>";
-                                             echo '<div class="mb-2">';
+                                             echo '<div class="input-container">';
                                                   echo  '<label class="block text-gray-700 text-sm font-bold mb-1">City Name:</label>';
                                                   echo  '<input type="text" name="city_nom" value="' . $city['nom'] . '"  class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">';
                                           echo '</div>';
-                                             echo '<div class="mb-2">';
+                                             echo '<div class="input-container">';
                                                   echo  '<label class="block text-gray-700 text-sm font-bold mb-1">Description:</label>';
                                                  echo  '<textarea name="city_description" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">' . $city['description'] . '</textarea>';
                                               echo '</div>';
-                                             echo '<div class="mb-2">';
+                                             echo '<div class="input-container">';
                                                   echo   '<label class="block text-gray-700 text-sm font-bold mb-1">Type:</label>';
                                                    echo  '<select  name="city_type"  class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">';
                                                        echo  '<option value="capitale" '. ($city['type'] === 'capitale' ? 'selected' : '') .'>Capital</option>';
@@ -393,15 +410,21 @@ $size = '64';
                          $stmtCities->close();
                         echo '</div>';
                         echo '<div class="mt-4">';
-                          echo '<form method="post">';
+                          echo '<form method="post" class="flex flex-col">';
                             echo '<input type="hidden" name="country_id" value="' . $country['id_pays'] . '">';
-                             echo '<input type="text" name="city_nom" placeholder="City Name" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2">';
-                            echo '<textarea name="city_description" placeholder="Description" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2"></textarea>';
-                            echo '<select name="city_type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2">';
-                            echo '<option value="capitale">Capital</option>';
-                            echo '<option value="autre">Other</option>';
-                             echo '</select>';
-                            echo '<button type="submit" name="add_city_to_country" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add City</button>';
+                             echo '<div class="input-container">';
+                               echo '<input type="text" name="city_nom" placeholder="City Name" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2">';
+                              echo '</div>';
+                              echo '<div class="input-container">';
+                                echo '<textarea name="city_description" placeholder="Description" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2"></textarea>';
+                              echo '</div>';
+                              echo '<div class="input-container">';
+                                echo '<select name="city_type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2">';
+                                echo '<option value="capitale">Capital</option>';
+                                echo '<option value="autre">Other</option>';
+                                 echo '</select>';
+                               echo '</div>';
+                             echo '<button type="submit" name="add_city_to_country" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add City</button>';
                              echo  '</form>';
                           echo  '</div>';
                     echo '</div>';
@@ -411,7 +434,7 @@ $size = '64';
           }
         ?>
     </div>
-    <div class="pagination flex justify-center mt-8">
+    <div class="pagination flex justify-center mt-8 mb-8">
         <?php if ($page > 1): ?>
             <a href="?page=<?= $page - 1 ?>" class="px-4 py-2 mx-1 bg-gray-200 rounded hover:bg-gray-300">« Previous</a>
         <?php endif; ?>
