@@ -18,7 +18,7 @@ $perPage = 5;
 $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-     if (isset($_POST['add_country'])) {
+    if (isset($_POST['add_country'])) {
         error_log("Add country form submitted");
         error_log(print_r($_POST, true));
         $nom = $_POST["nom"];
@@ -30,15 +30,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if (empty($nom)) {
              $nomError = "Country name is required.";
         } else {
-             // Check if country already exists
+            // Check if country already exists
             $checkSql = "SELECT COUNT(*) FROM pays WHERE nom = ?";
-             $checkStmt = $conn->prepare($checkSql);
-             $checkStmt->bind_param("s", $nom);
+            $checkStmt = $conn->prepare($checkSql);
+            $checkStmt->bind_param("s", $nom);
             $checkStmt->execute();
             $checkStmt->bind_result($count);
             $checkStmt->fetch();
-             $checkStmt->close();
-             if($count > 0) {
+            $checkStmt->close();
+            if($count > 0) {
                  $nomError = "Country already exists.";
             } else {
                 $continentName = 'Afrique';
@@ -46,11 +46,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $stmt->bind_param("s", $continentName);
                 $stmt->execute();
                 $result = $stmt->get_result();
-                 if ($row = $result->fetch_assoc()) {
+                if ($row = $result->fetch_assoc()) {
                     $id_continent = $row['id_continent'];
-                     $stmt->close();
-                     try {
-                       $conn->begin_transaction();
+                    $stmt->close();
+                    try {
+                      $conn->begin_transaction();
                         $sql = "INSERT INTO pays (nom, population, id_continent, langues) VALUES (?, ?, ?, ?)";
                         error_log("SQL for adding the country:" . $sql);
                          $stmt = $conn->prepare($sql);
@@ -61,44 +61,44 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 if (!$stmt->execute()) {
                                   throw new Exception("Error adding country: " . $stmt->error);
                                 }
-                                 $country_id = $conn->insert_id;
+                                $country_id = $conn->insert_id;
                                 error_log("country was added successfully, inserted id: " . $country_id);
                                  $stmt->close();
                                  foreach ($cities as $city) {
-                                   $cityNom = $city["nom"];
-                                  $cityDescription = $city["description"];
-                                  $cityType = $city["type"];
-                                  $sqlCity = "INSERT INTO ville (nom, description, type, id_pays) VALUES (?, ?, ?, ?)";
-                                 error_log("SQL for adding city:" . $sqlCity);
+                                     $cityNom = $city["nom"];
+                                     $cityDescription = $city["description"];
+                                     $cityType = $city["type"];
+                                     $sqlCity = "INSERT INTO ville (nom, description, type, id_pays) VALUES (?, ?, ?, ?)";
+                                    error_log("SQL for adding city:" . $sqlCity);
                                    $stmtCity = $conn->prepare($sqlCity);
-                                  if ($stmtCity === false) {
-                                    throw new Exception("Error in SQL statement: " . $conn->error);
-                                    } else {
-                                         $stmtCity->bind_param("sssi", $cityNom, $cityDescription, $cityType, $country_id);
-                                       if (!$stmtCity->execute()) {
-                                            throw new Exception("Error adding city: " . $stmtCity->error);
-                                      }
-                                     $stmtCity->close();
+                                     if ($stmtCity === false) {
+                                         throw new Exception("Error in SQL statement: " . $conn->error);
+                                     } else {
+                                          $stmtCity->bind_param("sssi", $cityNom, $cityDescription, $cityType, $country_id);
+                                        if (!$stmtCity->execute()) {
+                                             throw new Exception("Error adding city: " . $stmtCity->error);
+                                       }
+                                        $stmtCity->close();
+                                  }
                                  }
+                            $conn->commit();
+                            if (empty($feedbackMessage) && empty($nomError)) {
+                                $feedbackMessage = "Country and cities added successfully.";
+                                 error_log("Country and cities added successfully.");
                              }
-                          $conn->commit();
-                          if (empty($feedbackMessage) && empty($nomError)) {
-                              $feedbackMessage = "Country and cities added successfully.";
-                               error_log("Country and cities added successfully.");
-                           }
-                       }
-                     }
-                   catch(Exception $e){
-                        $conn->rollback();
-                        $feedbackMessage = $e->getMessage();
-                      error_log("Error adding country, rolled back transaction" . $e->getMessage());
-                  }
-               } else {
-                   $feedbackMessage = "Continent 'Africa' not found in the database.";
+                         }
+                      }
+                      catch(Exception $e){
+                          $conn->rollback();
+                          $feedbackMessage = $e->getMessage();
+                          error_log("Error adding country, rolled back transaction" . $e->getMessage());
+                      }
+                 } else {
+                    $feedbackMessage = "Continent 'Africa' not found in the database.";
                      $stmt->close();
                      error_log("Continent Africa not found");
-              }
-           }
+                }
+            }
         }
      if (isset($_POST['edit_country'])) {
         $idPays = $_POST["id_pays"];
@@ -503,7 +503,6 @@ $size = '64';
 
     });
 });
-
     </script>
 </body>
 </html>
