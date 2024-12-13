@@ -393,96 +393,65 @@ $size = '64';
         <?php endif; ?>
     </div>
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
     var modal = document.getElementById("addCountryModal");
     var btn = document.getElementById("addCountryBtn");
     var span = document.getElementsByClassName("close")[0];
+    var addCityButton = document.getElementById("addCityButton");
     var citiesContainer = document.getElementById("cities-container");
     var citiesInput = document.getElementById("citiesInput");
-    var cities = [];
-
-    btn.onclick = function() {
+      var cities = [];
+     btn.onclick = function() {
         modal.style.display = "block";
     }
-
     span.onclick = function() {
         modal.style.display = "none";
     }
-
     window.onclick = function(event) {
         if (event.target == modal) {
             modal.style.display = "none";
         }
     }
 
-    function attachToggleListeners() {
-        document.querySelectorAll('.toggle-country-info').forEach(function(button) {
-            button.addEventListener('click', function() {
-                var countryId = this.getAttribute('data-country-id');
-                var countryInfoDiv = document.getElementById('country-info-' + countryId);
-                countryInfoDiv.classList.toggle('hidden');
-
-                var isExpanded = countryInfoDiv.classList.contains('hidden');
-                localStorage.setItem('country-expanded-' + countryId, !isExpanded);
-            });
-
-            var countryId = button.getAttribute('data-country-id');
-            var countryInfoDiv = document.getElementById('country-info-' + countryId);
-            var isExpanded = localStorage.getItem('country-expanded-' + countryId) === 'true';
-            if (isExpanded) {
-                countryInfoDiv.classList.remove('hidden');
-            }
-        });
-    }
-
-    attachToggleListeners();
-
-    document.querySelectorAll(".addCityButton").forEach(function(addCityBtn) {
-        addCityBtn.addEventListener("click", function(event) {
-            event.preventDefault();
-            var citiesContainer = this.closest(".bg-white").querySelector(".mt-4");
-            var cityDiv = document.createElement("div");
-            cityDiv.classList.add("city-container", "border", "border-gray-300", "rounded-md", "p-3", "mb-4");
-            cityDiv.innerHTML = `
-                <h3 class="text-lg font-bold mb-2">City</h3>
-                <div class="mb-2">
-                    <label for="city_nom" class="block text-gray-700 text-sm font-bold mb-1">City Name:</label>
-                    <input type="text" name="city_nom" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                </div>
-                <div class="mb-2">
-                    <label for="city_description" class="block text-gray-700 text-sm font-bold mb-1">Description:</label>
-                    <textarea name="city_description" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
-                </div>
-                <div class="mb-2">
-                    <label for="city_type" class="block text-gray-700 text-sm font-bold mb-1">Type:</label>
-                    <select name="city_type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                        <option value="capitale">Capital</option>
-                        <option value="autre">Other</option>
+      addCityButton.addEventListener("click", function(){
+        var cityDiv = document.createElement("div");
+       cityDiv.classList.add("city-container", "border", "border-gray-300", "rounded-md", "p-3", "mb-4");
+        cityDiv.innerHTML = `
+            <h3 class="text-lg font-bold mb-2">City</h3>
+           <div class="mb-2">
+               <label for="city_nom" class="block text-gray-700 text-sm font-bold mb-1">City Name:</label>
+                <input type="text" name="city_nom" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+            </div>
+             <div class="mb-2">
+                 <label for="city_description" class="block text-gray-700 text-sm font-bold mb-1">Description:</label>
+                  <textarea name="city_description"  class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+             </div>
+              <div class="mb-2">
+                  <label for="city_type" class="block text-gray-700 text-sm font-bold mb-1">Type:</label>
+                   <select  name="city_type"  class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                       <option value="capitale">Capital</option>
+                       <option value="autre">Other</option>
                     </select>
-                </div>
-                <button class="remove-city bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded mt-2" type="button">Remove</button>
-            `;
-            citiesContainer.appendChild(cityDiv);
-        });
+            </div>
+             <button class="remove-city bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded mt-2" type="button" >Remove</button>
+        `;
+        citiesContainer.appendChild(cityDiv);
     });
 
-    document.addEventListener("click", function(event) {
-        if (event.target.classList.contains("remove-city")) {
-            event.target.closest(".city-container").remove();
-        }
-    });
-
-    document.querySelector("form").addEventListener("submit", function(event) {
-        cities = [];
-        document.querySelectorAll(".city-container").forEach((cityContainer) => {
+    citiesContainer.addEventListener("click", function(event) {
+         if(event.target.classList.contains("remove-city")){
+            event.target.parentElement.remove();
+         }
+      });
+      document.querySelector("form").addEventListener("submit", function(event) {
+       cities = [];
+      citiesContainer.querySelectorAll(".city-container").forEach((cityContainer) => {
             const nom = cityContainer.querySelector("input[name='city_nom']").value;
             const description = cityContainer.querySelector("textarea[name='city_description']").value;
             const type = cityContainer.querySelector("select[name='city_type']").value;
             cities.push({ nom: nom, description: description, type: type });
-        });
-        citiesInput.value = JSON.stringify(cities);
-    });
-});
+      });
+    citiesInput.value = JSON.stringify(cities);
+     });
     </script>
 </body>
 </html>
