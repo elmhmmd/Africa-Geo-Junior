@@ -1,19 +1,16 @@
 <?php
-// Database connection settings
 $servername = "localhost";
 $username = "root";
 $password = "";
 $dbname = "africa_geo_junior";
 
-// Global variables for feedback and pagination
 $feedbackMessage = "";
 $selectedCountry = null;
 $perPage = 5;
 $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
-$conn = null; // Database connection variable
+$conn = null; 
 $nomError = "";
 
-// Function to connect to the database
 function connectDB() {
     global $servername, $username, $password, $dbname, $conn;
     $conn = new mysqli($servername, $username, $password, $dbname);
@@ -23,7 +20,6 @@ function connectDB() {
     $conn->set_charset("utf8");
 }
 
-// Function to close the database connection
 function closeDB() {
     global $conn;
     if ($conn) {
@@ -32,7 +28,6 @@ function closeDB() {
 }
 
 
-// Function to add a new country
 function addCountry() {
   global $conn, $feedbackMessage, $nomError;
    if (isset($_POST['add_country'])) {
@@ -42,7 +37,6 @@ function addCountry() {
         $cities = isset($_POST["cities"]) ? json_decode($_POST["cities"], true) : [];
 
 
-         // Check if country already exists (case-insensitive)
         $checkSql = "SELECT COUNT(*) FROM pays WHERE LOWER(nom) = LOWER(?)";
         $checkStmt = $conn->prepare($checkSql);
         $checkStmt->bind_param("s", $nom);
@@ -65,7 +59,6 @@ function addCountry() {
                 $id_continent = $row['id_continent'];
                 $stmt->close();
 
-                  // Begin transaction for atomicity
                 $conn->begin_transaction();
                 $sql = "INSERT INTO pays (nom, population, id_continent, langues) VALUES (?, ?, ?, ?)";
                 $stmt = $conn->prepare($sql);
@@ -74,7 +67,6 @@ function addCountry() {
                     $country_id = $conn->insert_id;
                     $stmt->close();
 
-                    // Insert cities ONLY if they are provided
                     $cityInsertSuccess = true;
                     if (!empty($cities)) {
                         foreach ($cities as $city) {
@@ -94,11 +86,9 @@ function addCountry() {
                     }
 
                      if ($cityInsertSuccess && empty($nomError)) {
-                         // Commit transaction if everything is successful
                         $conn->commit();
                          $feedbackMessage = "Country and cities added successfully.";
                      } else {
-                        // Rollback if there's an error
                         $conn->rollback();
                         if (empty($feedbackMessage)) {
                              $feedbackMessage = "Error adding country or cities.";
@@ -115,7 +105,6 @@ function addCountry() {
         }
 }
 
-// Function to edit an existing country
 function editCountry() {
     global $conn, $feedbackMessage;
     if (isset($_POST['edit_country'])) {
@@ -124,7 +113,6 @@ function editCountry() {
         $population = $_POST["population"];
         $langues = $_POST["langues"];
 
-        // Check for duplicate country name (case-insensitive, excluding the current country)
         $checkSql = "SELECT COUNT(*) FROM pays WHERE LOWER(nom) = LOWER(?) AND id_pays != ?";
         $checkStmt = $conn->prepare($checkSql);
         $checkStmt->bind_param("si", $nom, $idPays);
@@ -149,7 +137,6 @@ function editCountry() {
     }
 }
 
-// Function to edit an existing city
 function editCity() {
     global $conn, $feedbackMessage;
     if (isset($_POST['edit_city'])) {
@@ -170,7 +157,6 @@ function editCity() {
 }
 
 
-// Function to add a new city to a country
 function addCityToCountry() {
     global $conn, $feedbackMessage;
     if (isset($_POST['add_city_to_country'])) {
@@ -191,16 +177,13 @@ function addCityToCountry() {
     }
 }
 
-// Function to delete a country and its associated cities
 function deleteCountry() {
    global $conn, $feedbackMessage;
    if (isset($_POST['delete_country'])) {
          $idPays = $_POST["id_pays"];
 
-        // Use transactions to ensure atomicity
         $conn->begin_transaction();
 
-        // Delete cities first (due to foreign key constraint)
         $sqlCities = "DELETE FROM ville WHERE id_pays = ?";
         $stmtCities = $conn->prepare($sqlCities);
         $stmtCities->bind_param("i", $idPays);
@@ -208,27 +191,26 @@ function deleteCountry() {
         if ($stmtCities->execute()) {
             $stmtCities->close();
 
-             // Then delete the country
             $sqlCountry = "DELETE FROM pays WHERE id_pays = ?";
             $stmtCountry = $conn->prepare($sqlCountry);
             $stmtCountry->bind_param("i", $idPays);
 
               if ($stmtCountry->execute()) {
-                $conn->commit(); // Commit if both deletes are successful
+                $conn->commit(); 
                 $feedbackMessage = "Country and associated cities deleted.";
               } else {
-                $conn->rollback(); // Rollback if there's an error deleting the country
+                $conn->rollback(); 
                  $feedbackMessage = "Error deleting country: " . $stmtCountry->error;
               }
              $stmtCountry->close();
         } else {
-             $conn->rollback(); // Rollback if there's an error deleting cities
+             $conn->rollback(); 
             $feedbackMessage = "Error deleting cities: " . $stmtCities->error;
         }
     }
 }
 
-// Function to delete a city
+
 function deleteCity() {
     global $conn, $feedbackMessage;
     if (isset($_POST['delete_city'])) {
@@ -245,7 +227,7 @@ function deleteCity() {
     }
 }
 
-// Function to fetch countries with pagination
+
 function fetchCountries($perPage, $page) {
     global $conn;
     $sql = "SELECT * FROM pays ORDER BY nom";
@@ -255,7 +237,7 @@ function fetchCountries($perPage, $page) {
     return $result;
 }
 
-// Function to calculate total pages for pagination
+
 function calculateTotalPages($perPage) {
     global $conn;
     $totalCountries = $conn->query("SELECT COUNT(*) AS count FROM pays")->fetch_assoc()['count'];
@@ -263,7 +245,7 @@ function calculateTotalPages($perPage) {
 }
 
 
-// Function to handle form submissions
+
 function handleFormSubmission() {
   connectDB();
    addCountry();
@@ -275,7 +257,6 @@ function handleFormSubmission() {
 
 }
 
-// Country code mapping array
 $countryMap = [
     'Algeria' => 'DZ',
     'Angola' => 'AO',
@@ -336,10 +317,8 @@ $countryMap = [
 $style = 'flat';
 $size = '64';
 
-// Handle form submissions first before rendering the page
 handleFormSubmission();
 
-// Connect to the database only when it's needed for fetching data
 if(!isset($_POST['add_country'])){
   connectDB();
 }
